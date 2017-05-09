@@ -64,10 +64,10 @@ void setup()
 void loop()
 {
   foot_switches_state.header.stamp = nh.now();
-  foot_switches_state.left != digitalRead(LS_LEFT);
-  foot_switches_state.right != digitalRead(LS_RIGHT);
-  foot_switches_state.front != digitalRead(LS_FRONT);
-  foot_switches_state.back != digitalRead(LS_BACK);
+  foot_switches_state.left = !(digitalRead(LS_LEFT));
+  foot_switches_state.right = !(digitalRead(LS_RIGHT));
+  foot_switches_state.front = !(digitalRead(LS_FRONT));
+  foot_switches_state.back = !(digitalRead(LS_BACK));
   foot_switches.publish( &foot_switches_state );
 
   range_msg.header.stamp = nh.now();
