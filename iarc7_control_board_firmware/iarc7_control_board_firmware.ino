@@ -2,7 +2,7 @@
  * rosserial Publisher Example
  * Prints "hello world!"
  */
-
+#define USE_TEENSY_HW_SERIAL
 #include <ros.h>
 #include <std_msgs/String.h>
 #include <iarc7_msgs/LandingGearContactsStamped.h>
@@ -32,20 +32,16 @@ const int loop_delay = 1000/rate_hz;
  * getRange() - samples the analog input from the ranger
  * and converts it into meters.  
  */
-float getRange(int pin_num){
-    int sample;
-    // Get data
-    sample = analogRead(pin_num)/4;
-    // if the ADC reading is too low, 
-    //   then we are really far away from anything
-    if(sample < 10)
-        return 254;     // max range
-    // Magic numbers to get cm
-    // Samples will need to be taken to conver this to a curve
-    sample= 1309/(sample-3);
-    return (sample - 1)/100; //convert to meters
+double getRange(int pin_num)
+{
+  //output = 4178.8 * x^(-.655) is the fitted line
+  
+  float c = 4178.8;
+  float power = 1/.655;
+  int sample = analogRead(pin_num);
+    
+  return pow(c/sample, power);
 }
-
 
 void setup()
 {
@@ -59,10 +55,10 @@ void setup()
 
   range_msg.radiation_type = sensor_msgs::Range::INFRARED;
   range_msg.header.frame_id =  frameid;
-  // The field of view will need to be measured
-  range_msg.field_of_view = 0.01;
-  range_msg.min_range = 0.01;
-  range_msg.max_range = 0.15;
+
+  range_msg.field_of_view = 0.3;
+  range_msg.min_range = 0.012;
+  range_msg.max_range = 0.075;
 }
 
 void loop()
