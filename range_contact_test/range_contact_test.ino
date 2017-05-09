@@ -3,7 +3,7 @@
 const int rangefinder_pin=A2;
 
 const bool SWITCH_TEST = false;
-const bool FITTED = false;
+const bool FITTED = true;
 
 const int LS_LEFT  = 2;
 const int LS_RIGHT = 3;
@@ -17,7 +17,7 @@ bool switch_back;
 
 float range;
 
-//y = 7263.9 * x^(-0.627)   R² = 0.98277
+//y = 4178.8 * x^(-0.655)
 
 void setup()
 {
@@ -27,12 +27,6 @@ void setup()
     pinMode(LS_RIGHT, INPUT_PULLUP);
     pinMode(LS_FRONT, INPUT_PULLUP);
     pinMode(LS_BACK, INPUT_PULLUP);
-
-    /*
-    // The field of view will need to be measured
-    range_msg.field_of_view = 0.01;
-    range_msg.min_range = 0.01;
-    range_msg.max_range = 0.15;*/
 }
 
 void loop()
@@ -44,8 +38,7 @@ void loop()
   
     range = getRange(rangefinder_pin);
     
-    if (SWITCH_TEST)
-    {
+    if (SWITCH_TEST){
         Serial.print("LEFT:\t");
         Serial.println(switch_left);
         Serial.print("RIGHT:\t");
@@ -55,15 +48,12 @@ void loop()
         Serial.print("BACK:\t");
         Serial.println(switch_back);
     }
-    else 
-    {
-        if (FITTED)
-        {
+    else {
+        if (FITTED){
             Serial.print("RANGE:\t");
             Serial.println(range);
         }
-        else
-        {
+        else {
             Serial.print("RANGE OUTPUT:\t");
             Serial.println(analogRead(rangefinder_pin));
         }
@@ -73,20 +63,12 @@ void loop()
 
 double getRange(int pin_num)
 {
-    int sample;
+    float c = 4178.8;
+    float power = 1/.655;
+    
+    int sample = analogRead(pin_num);
 
-    sample = analogRead(pin_num);
-    
-    float milli_volts = toMVolts(sample);
-    
-    float c = 7263.9;
-    
-    return pow(c/milli_volts, 1.594896332);
-}
-
-float toMVolts(float raw_input)
-{
-    return (1000.0 *  3.3 * (raw_input / 1023.0));
+    return pow(c/sample, power);
 }
 
 
