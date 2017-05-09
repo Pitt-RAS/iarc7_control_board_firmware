@@ -2,7 +2,7 @@
 
 const int rangefinder_pin=A2;
 
-const bool SWITCH_TEST = false;
+const bool SWITCH_TEST = true;
 const bool FITTED = true;
 
 const int LS_LEFT  = 2;
@@ -31,10 +31,10 @@ void setup()
 
 void loop()
 {
-    switch_left  != digitalRead(LS_LEFT);
-    switch_right != digitalRead(LS_RIGHT);
-    switch_front != digitalRead(LS_FRONT);
-    switch_back  != digitalRead(LS_BACK);
+    switch_left  = !(digitalRead(LS_LEFT));
+    switch_right = !(digitalRead(LS_RIGHT));
+    switch_front = !(digitalRead(LS_FRONT));
+    switch_back  = !(digitalRead(LS_BACK));
   
     range = getRange(rangefinder_pin);
     
@@ -57,7 +57,7 @@ void loop()
             Serial.print("RANGE OUTPUT:\t");
             Serial.println(analogRead(rangefinder_pin));
         }
-    }   
+    } 
     delay(100);
 }
 
