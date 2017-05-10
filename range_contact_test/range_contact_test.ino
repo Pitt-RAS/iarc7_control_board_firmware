@@ -17,7 +17,8 @@ bool switch_back;
 
 float range;
 
-//y = 4178.8 * x^(-0.655)
+//y = 4178.8 * x^(-0.655) fit 1
+//y = 3824.5 * x^(-0.63) fit 2
 
 void setup()
 {
@@ -63,8 +64,8 @@ void loop()
 
 double getRange(int pin_num)
 {
-    float c = 4178.8;
-    float power = 1/.655;
+    float c = 3824.5;
+    float power = 1/.63;
     
     int sample = analogRead(pin_num);
 
