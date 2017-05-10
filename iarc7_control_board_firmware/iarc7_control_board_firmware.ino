@@ -2,9 +2,8 @@
  * rosserial Publisher Example
  * Prints "hello world!"
  */
-#define USE_TEENSY_HW_SERIAL
+//#define USE_TEENSY_HW_SERIAL
 #include <ros.h>
-#include <std_msgs/String.h>
 #include <iarc7_msgs/LandingGearContactsStamped.h>
 #include <sensor_msgs/Range.h>
 
@@ -16,7 +15,7 @@ ros::Publisher foot_switches("landing_gear_contact_switches", &foot_switches_sta
 sensor_msgs::Range range_msg;
 ros::Publisher rangefinder_pub("sharp_rangefinder", &range_msg);
 
-const int rangefinder_pin=14;
+const int rangefinder_pin=A2;
 
 char frameid[] = "/sharp_rangefinder";
 
@@ -47,6 +46,7 @@ void setup()
 {
   nh.initNode();
   nh.advertise(foot_switches);
+  nh.advertise(rangefinder_pub);
 
   pinMode(LS_LEFT, INPUT_PULLUP);
   pinMode(LS_RIGHT, INPUT_PULLUP);
