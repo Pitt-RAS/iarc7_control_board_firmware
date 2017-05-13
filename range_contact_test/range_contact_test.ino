@@ -1,9 +1,10 @@
+#include <Bounce2.h>
 #include <Arduino.h>
 
 const int rangefinder_pin=A2;
 
 const bool SWITCH_TEST = true;
-const bool FITTED = true;
+const bool FITTED = false;
 
 const int LS_LEFT  = 2;
 const int LS_RIGHT = 3;
@@ -17,6 +18,11 @@ bool switch_back;
 
 float range;
 
+Bounce left;
+Bounce right;
+Bounce front;
+Bounce back;
+
 //y = 4178.8 * x^(-0.655) fit 1
 //y = 3824.5 * x^(-0.63) fit 2
 
@@ -28,14 +34,27 @@ void setup()
     pinMode(LS_RIGHT, INPUT_PULLUP);
     pinMode(LS_FRONT, INPUT_PULLUP);
     pinMode(LS_BACK, INPUT_PULLUP);
+
+    // After setting up the button, setup the object
+    left.attach(LS_LEFT);
+    left.interval(1);
+    
+    left.attach(LS_RIGHT);
+    left.interval(1);
+    
+    left.attach(LS_FRONT);
+    left.interval(1);
+    
+    left.attach(LS_BACK);
+    left.interval(1);
 }
 
 void loop()
 {
-    switch_left  = !(digitalRead(LS_LEFT));
-    switch_right = !(digitalRead(LS_RIGHT));
-    switch_front = !(digitalRead(LS_FRONT));
-    switch_back  = !(digitalRead(LS_BACK));
+    switch_left  = left.read();
+    switch_right = right.read();
+    switch_front = front.read();
+    switch_back  = back.read();
   
     range = getRange(rangefinder_pin);
     
@@ -64,8 +83,8 @@ void loop()
 
 double getRange(int pin_num)
 {
-    float c = 3824.5;
-    float power = 1/.63;
+    float c = 4178.8;
+    float power = 1/0.655;
     
     int sample = analogRead(pin_num);
 
