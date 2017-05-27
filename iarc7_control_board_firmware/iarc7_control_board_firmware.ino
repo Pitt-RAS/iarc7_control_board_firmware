@@ -2,7 +2,7 @@
  * rosserial Publisher Example
  * Prints "hello world!"
  */
-//#define USE_TEENSY_HW_SERIAL
+#define USE_TEENSY_HW_SERIAL
 #include <ros.h>
 #include <iarc7_msgs/LandingGearContactsStamped.h>
 #include <sensor_msgs/Range.h>
@@ -44,6 +44,7 @@ double getRange(int pin_num)
 
 void setup()
 {
+  nh.getHardware()->setBaud(115200);
   nh.initNode();
   nh.advertise(foot_switches);
   nh.advertise(rangefinder_pub);
