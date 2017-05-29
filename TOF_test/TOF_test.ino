@@ -26,13 +26,13 @@ void setup()
 
 void loop()
 {
-  Serial.println("Start:");
-  Serial.println(micros());
+  //Serial.println("Start:");
+  //Serial.println(micros());
   
   Serial.print(sensor.readRangeContinuousMillimeters());
   if (sensor.timeoutOccurred()) { Serial.print(" TIMEOUT"); }
-  Serial.println("\nEND");
-  Serial.println(micros());
+  //Serial.println("\nEND");
+  //Serial.println(micros());
 
   Serial.println();
 }

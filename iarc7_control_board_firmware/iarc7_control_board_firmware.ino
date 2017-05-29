@@ -20,12 +20,11 @@ iarc7_msgs::LandingGearContactsStamped foot_switches_state;
 ros::Publisher foot_switches("landing_gear_contact_switches", &foot_switches_state);
 
 sensor_msgs::Range range_msg;
-ros::Publisher rangefinder_pub("sharp_rangefinder", &range_msg);
+ros::Publisher rangefinder_pub("short_distance_lidar", &range_msg);
+char frameid[] = "/short_distance_lidar";
 
 iarc7_msgs::Float64Stamped battery_msg;
 ros::Publisher battery_pub("fc_battery", &battery_msg);
-
-char frameid[] = "/sharp_rangefinder";
 
 const int LS_LEFT=2;
 const int LS_RIGHT=5;
@@ -63,6 +62,16 @@ void setup()
   range_msg.min_range = 0.01;
   range_msg.max_range = 0.800;
 
+  Wire.begin();
+  sensor.init();
+  sensor.setTimeout(500);
+
+  // Start continuous back-to-back mode (take readings as
+  // fast as possible).  To use continuous timed mode
+  // instead, provide a desired inter-measurement period in
+  // ms (e.g. sensor.startContinuous(100)).
+  sensor.startContinuous();
+
   delay_counter = millis();
   pinMode(HEART_BEAT_PIN, OUTPUT);
 }
@@ -79,7 +88,6 @@ void loop()
   range_msg.header.stamp = nh.now();
   range_msg.range = sensor.readRangeContinuousMillimeters()/1000.0;
   rangefinder_pub.publish(&range_msg);
-  
 
   battery_msg.header.stamp = nh.now();
   battery_msg.data = (float)analogRead(BATTERY_PIN) * BATTERY_VOLTAGE_DIVIDER_RATIO;
