@@ -2,7 +2,7 @@
  * rosserial Publisher Example
  * Prints "hello world!"
  */
-//#define USE_TEENSY_HW_SERIAL
+#define USE_TEENSY_HW_SERIAL
 #include <ros.h>
 #include <iarc7_msgs/LandingGearContactsStamped.h>
 #include <iarc7_msgs/Float64Stamped.h>
