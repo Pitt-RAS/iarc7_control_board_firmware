@@ -6,6 +6,12 @@
 #include <ros.h>
 #include <iarc7_msgs/LandingGearContactsStamped.h>
 #include <sensor_msgs/Range.h>
+#include <Wire.h>
+#include <VL53L0X.h>
+
+//https://github.com/pololu/vl53l0x-arduino for VL53L0X library
+
+VL53L0X sensor;
 
 ros::NodeHandle nh;
 
@@ -14,8 +20,6 @@ ros::Publisher foot_switches("landing_gear_contact_switches", &foot_switches_sta
 
 sensor_msgs::Range range_msg;
 ros::Publisher rangefinder_pub("sharp_rangefinder", &range_msg);
-
-const int rangefinder_pin=A2;
 
 char frameid[] = "/sharp_rangefinder";
 
@@ -27,20 +31,6 @@ const int LS_BACK=5;
 const int rate_hz = 50;
 const int loop_delay = 1000/rate_hz;
 
-/*
- * getRange() - samples the analog input from the ranger
- * and converts it into meters.  
- */
-double getRange(int pin_num)
-{
-  //output = 4178.8 * x^(-.655) is the fitted line
-  
-  float c = 4178.8;
-  float power = 1/.655;
-  int sample = analogRead(pin_num);
-    
-  return pow(c/sample, power);
-}
 
 void setup()
 {
@@ -57,8 +47,8 @@ void setup()
   range_msg.header.frame_id =  frameid;
 
   range_msg.field_of_view = 0.3;
-  range_msg.min_range = 0.012;
-  range_msg.max_range = 0.075;
+  range_msg.min_range = 0.01;
+  range_msg.max_range = 0.800;
 }
 
 void loop()
@@ -71,7 +61,7 @@ void loop()
   foot_switches.publish( &foot_switches_state );
 
   range_msg.header.stamp = nh.now();
-  range_msg.range = getRange(rangefinder_pin);
+  range_msg.range = sensor.readRangeContinuousMillimeters()/1000.0;
   rangefinder_pub.publish(&range_msg);
   
   nh.spinOnce();
