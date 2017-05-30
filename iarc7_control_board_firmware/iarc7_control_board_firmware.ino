@@ -3,6 +3,7 @@
  * Prints "hello world!"
  */
 #define USE_TEENSY_HW_SERIAL
+#include <Bounce2.h>
 #include <ros.h>
 #include <iarc7_msgs/LandingGearContactsStamped.h>
 #include <iarc7_msgs/Float64Stamped.h>
@@ -13,6 +14,11 @@
 //https://github.com/pololu/vl53l0x-arduino for VL53L0X library
 
 VL53L0X sensor;
+
+Bounce left;
+Bounce right;
+Bounce front;
+Bounce back;
 
 ros::NodeHandle nh;
 
@@ -55,6 +61,19 @@ void setup()
   pinMode(LS_FRONT, INPUT_PULLUP);
   pinMode(LS_BACK, INPUT_PULLUP);
 
+  // After setting up the button, setup the object
+  left.attach(LS_LEFT);
+  left.interval(1);
+    
+  left.attach(LS_RIGHT);
+  left.interval(1);
+    
+  left.attach(LS_FRONT);
+  left.interval(1);
+    
+  left.attach(LS_BACK);
+  left.interval(1);
+
   range_msg.radiation_type = sensor_msgs::Range::INFRARED;
   range_msg.header.frame_id =  frameid;
 
@@ -79,10 +98,10 @@ void setup()
 void loop()
 {
   foot_switches_state.header.stamp = nh.now();
-  foot_switches_state.left = digitalRead(LS_LEFT);
-  foot_switches_state.right = digitalRead(LS_RIGHT);
-  foot_switches_state.front = digitalRead(LS_FRONT);
-  foot_switches_state.back = digitalRead(LS_BACK);
+  foot_switches_state.left = left.read();
+  foot_switches_state.right = right.read();
+  foot_switches_state.front = front.read();
+  foot_switches_state.back = back.read();
   foot_switches.publish( &foot_switches_state );
 
   range_msg.header.stamp = nh.now();
