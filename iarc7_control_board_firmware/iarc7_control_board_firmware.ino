@@ -30,7 +30,7 @@ ros::Publisher rangefinder_pub("short_distance_lidar", &range_msg);
 char frameid[] = "/short_distance_lidar";
 
 iarc7_msgs::Float64Stamped battery_msg;
-ros::Publisher battery_pub("control_board_battery", &battery_msg);
+ros::Publisher battery_pub("motor_battery", &battery_msg);
 
 const int LS_LEFT=2;
 const int LS_RIGHT=5;
