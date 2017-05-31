@@ -65,14 +65,14 @@ void setup()
   left.attach(LS_LEFT);
   left.interval(1);
     
-  left.attach(LS_RIGHT);
-  left.interval(1);
+  right.attach(LS_RIGHT);
+  right.interval(1);
     
-  left.attach(LS_FRONT);
-  left.interval(1);
+  front.attach(LS_FRONT);
+  front.interval(1);
     
-  left.attach(LS_BACK);
-  left.interval(1);
+  back.attach(LS_BACK);
+  back.interval(1);
 
   range_msg.radiation_type = sensor_msgs::Range::INFRARED;
   range_msg.header.frame_id =  frameid;
@@ -97,6 +97,13 @@ void setup()
 
 void loop()
 {
+  int start_time = millis();
+
+  left.update();
+  right.update();
+  front.update();
+  back.update();
+
   foot_switches_state.header.stamp = nh.now();
   foot_switches_state.left = left.read();
   foot_switches_state.right = right.read();
@@ -113,7 +120,11 @@ void loop()
   battery_pub.publish(&battery_msg);
 
   nh.spinOnce();
-  delay(loop_delay);
+
+
+  if(millis() - start_time < loop_delay) {
+    delay(loop_delay - (millis() - start_time));
+  }
 
   // Blink heartbeat pin
   if(millis() - delay_counter > HEART_BEAT_HALF_PERIOD) {
