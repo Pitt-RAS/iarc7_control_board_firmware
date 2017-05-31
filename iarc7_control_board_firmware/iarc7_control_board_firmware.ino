@@ -48,6 +48,9 @@ const int HEART_BEAT_PIN = 13;
 long delay_counter = 0;
 bool heart = false;
 
+// Debounce time in milliseconds
+const  int debounce_time = 5;
+
 void setup()
 {
   nh.getHardware()->setBaud(115200);
@@ -63,16 +66,16 @@ void setup()
 
   // After setting up the button, setup the object
   left.attach(LS_LEFT);
-  left.interval(1);
+  left.interval(debounce_time);
     
   right.attach(LS_RIGHT);
-  right.interval(1);
+  right.interval(debounce_time);
     
   front.attach(LS_FRONT);
-  front.interval(1);
+  front.interval(debounce_time);
     
   back.attach(LS_BACK);
-  back.interval(1);
+  back.interval(debounce_time);
 
   range_msg.radiation_type = sensor_msgs::Range::INFRARED;
   range_msg.header.frame_id =  frameid;
