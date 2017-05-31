@@ -39,18 +39,23 @@ void setup()
     left.attach(LS_LEFT);
     left.interval(1);
     
-    left.attach(LS_RIGHT);
-    left.interval(1);
+    right.attach(LS_RIGHT);
+    right.interval(1);
     
-    left.attach(LS_FRONT);
-    left.interval(1);
+    front.attach(LS_FRONT);
+    front.interval(1);
     
-    left.attach(LS_BACK);
-    left.interval(1);
+    back.attach(LS_BACK);
+    back.interval(1);
 }
 
 void loop()
 {
+    left.update();
+    right.update();
+    front.update();
+    back.update();
+    
     switch_left  = left.read();
     switch_right = right.read();
     switch_front = front.read();
