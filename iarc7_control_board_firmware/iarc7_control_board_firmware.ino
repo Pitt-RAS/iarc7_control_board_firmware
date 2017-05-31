@@ -3,6 +3,7 @@
  * Prints "hello world!"
  */
 #define USE_TEENSY_HW_SERIAL
+#include <Bounce2.h>
 #include <ros.h>
 #include <iarc7_msgs/LandingGearContactsStamped.h>
 #include <iarc7_msgs/Float64Stamped.h>
@@ -13,6 +14,11 @@
 //https://github.com/pololu/vl53l0x-arduino for VL53L0X library
 
 VL53L0X sensor;
+
+Bounce left;
+Bounce right;
+Bounce front;
+Bounce back;
 
 ros::NodeHandle nh;
 
@@ -42,6 +48,9 @@ const int HEART_BEAT_PIN = 13;
 long delay_counter = 0;
 bool heart = false;
 
+// Debounce time in milliseconds
+const  int debounce_time = 5;
+
 void setup()
 {
   nh.getHardware()->setBaud(115200);
@@ -54,6 +63,19 @@ void setup()
   pinMode(LS_RIGHT, INPUT_PULLUP);
   pinMode(LS_FRONT, INPUT_PULLUP);
   pinMode(LS_BACK, INPUT_PULLUP);
+
+  // After setting up the button, setup the object
+  left.attach(LS_LEFT);
+  left.interval(debounce_time);
+    
+  right.attach(LS_RIGHT);
+  right.interval(debounce_time);
+    
+  front.attach(LS_FRONT);
+  front.interval(debounce_time);
+    
+  back.attach(LS_BACK);
+  back.interval(debounce_time);
 
   range_msg.radiation_type = sensor_msgs::Range::INFRARED;
   range_msg.header.frame_id =  frameid;
@@ -78,11 +100,18 @@ void setup()
 
 void loop()
 {
+  int start_time = millis();
+
+  left.update();
+  right.update();
+  front.update();
+  back.update();
+
   foot_switches_state.header.stamp = nh.now();
-  foot_switches_state.left = digitalRead(LS_LEFT);
-  foot_switches_state.right = digitalRead(LS_RIGHT);
-  foot_switches_state.front = digitalRead(LS_FRONT);
-  foot_switches_state.back = digitalRead(LS_BACK);
+  foot_switches_state.left = left.read();
+  foot_switches_state.right = right.read();
+  foot_switches_state.front = front.read();
+  foot_switches_state.back = back.read();
   foot_switches.publish( &foot_switches_state );
 
   range_msg.header.stamp = nh.now();
@@ -94,7 +123,11 @@ void loop()
   battery_pub.publish(&battery_msg);
 
   nh.spinOnce();
-  delay(loop_delay);
+
+
+  if(millis() - start_time < loop_delay) {
+    delay(loop_delay - (millis() - start_time));
+  }
 
   // Blink heartbeat pin
   if(millis() - delay_counter > HEART_BEAT_HALF_PERIOD) {
