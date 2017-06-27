@@ -1,11 +1,11 @@
 
 // 1hz lower than the update rate of the teensy
-const int rate_hz = 29;
-const int loop_delay = 1000/rate_hz;
+const unsigned long rate_hz = 10;
+const unsigned long loop_delay = 1000/rate_hz;
 
-const int HEART_BEAT_HALF_PERIOD = 500;
+const unsigned long HEART_BEAT_HALF_PERIOD = 500;
 const int HEART_BEAT_PIN = 13;
-long delay_counter = 0;
+unsigned long delay_counter = 0;
 bool heart = false;
 
 void setup() {
@@ -16,12 +16,18 @@ void setup() {
 void loop() {
   // put your main code here, to run repeatedly:
 
-  int start_time = millis();
+  unsigned long start_time = millis();
 
   float val = analogRead(A7);
   float volts = val * (5.0/1024.0) * ((56.0+10.0)/10.0)*(12.02/12.31);
 
-  Serial.println(volts);
+  float adjusted_range_volts = volts - 18.0;
+
+  if(adjusted_range_volts < 0)
+    adjusted_range_volts = 0;
+
+  byte raw = adjusted_range_volts * 255.0 / 10.0;
+  Serial.write(raw);
 
   if(millis() - start_time < loop_delay) {
     delay(loop_delay - (millis() - start_time));

@@ -40,12 +40,12 @@ const int LS_BACK=3;
 const int BATTERY_PIN = A2;
 const float BATTERY_VOLTAGE_DIVIDER_RATIO = (3.3/1024.0) / 0.0838;
 
-const int rate_hz = 50;
-const int loop_delay = 1000/rate_hz;
+const unsigned long rate_hz = 50;
+const unsigned long loop_delay = 1000/rate_hz;
 
 const int HEART_BEAT_HALF_PERIOD = 500;
 const int HEART_BEAT_PIN = 13;
-long delay_counter = 0;
+unsigned long delay_counter = 0;
 bool heart = false;
 
 // Debounce time in milliseconds
@@ -103,34 +103,42 @@ void setup()
 
 void loop()
 {
-  int start_time = millis();
+  unsigned long start_time = millis();
 
   left.update();
   right.update();
   front.update();
   back.update();
+  //Serial.print("millis "); Serial.println(millis() - start_time);
 
   foot_switches_state.header.stamp = nh.now();
-  foot_switches_state.left = left.read();
   foot_switches_state.right = right.read();
+  foot_switches_state.left = left.read();
   foot_switches_state.front = front.read();
   foot_switches_state.back = back.read();
   foot_switches.publish( &foot_switches_state );
 
+  //Serial.print("millis "); Serial.println(millis() - start_time);
   range_msg.header.stamp = nh.now();
   range_msg.range = sensor.readRangeContinuousMillimeters()/1000.0;
   rangefinder_pub.publish(&range_msg);
+  //Serial.print("millis "); Serial.println(millis() - start_time);
 
-  battery_msg.header.stamp = nh.now();
-  //battery_msg.data = (float)analogRead(BATTERY_PIN) * BATTERY_VOLTAGE_DIVIDER_RATIO;
-  battery_msg.data = Serial3.parseFloat();
-  battery_pub.publish(&battery_msg);
+  if(Serial3.available() > 0) {
+    battery_msg.header.stamp = nh.now();
+    //battery_msg.data = (float)analogRead(BATTERY_PIN) * BATTERY_VOLTAGE_DIVIDER_RATIO;
+    battery_msg.data = (Serial3.read() * 10.0/255.0)+18.0;
+    battery_pub.publish(&battery_msg);
+    Serial.println(battery_msg.data);
 
-
+    while(Serial3.available() > 0) {
+        Serial3.read();
+    }
+  }
 
   nh.spinOnce();
 
-
+  //Serial.print("millis "); Serial.println(millis() - start_time);
   if(millis() - start_time < loop_delay) {
     delay(loop_delay - (millis() - start_time));
   }
