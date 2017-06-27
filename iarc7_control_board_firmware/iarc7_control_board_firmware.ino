@@ -32,10 +32,10 @@ char frameid[] = "/short_distance_lidar";
 iarc7_msgs::Float64Stamped battery_msg;
 ros::Publisher battery_pub("motor_battery", &battery_msg);
 
-const int LS_LEFT=2;
-const int LS_RIGHT=5;
-const int LS_FRONT=3;
-const int LS_BACK=4;
+const int LS_LEFT=5;
+const int LS_RIGHT=2;
+const int LS_FRONT=4;
+const int LS_BACK=3;
 
 const int BATTERY_PIN = A2;
 const float BATTERY_VOLTAGE_DIVIDER_RATIO = (3.3/1024.0) / 0.0838;
@@ -53,6 +53,9 @@ const  int debounce_time = 5;
 
 void setup()
 {
+  Serial3.begin(4800);
+  Serial3.setTimeout(50);
+
   nh.getHardware()->setBaud(115200);
   nh.initNode();
   nh.advertise(foot_switches);
@@ -119,8 +122,11 @@ void loop()
   rangefinder_pub.publish(&range_msg);
 
   battery_msg.header.stamp = nh.now();
-  battery_msg.data = (float)analogRead(BATTERY_PIN) * BATTERY_VOLTAGE_DIVIDER_RATIO;
+  //battery_msg.data = (float)analogRead(BATTERY_PIN) * BATTERY_VOLTAGE_DIVIDER_RATIO;
+  battery_msg.data = Serial3.parseFloat();
   battery_pub.publish(&battery_msg);
+
+
 
   nh.spinOnce();
 
