@@ -19,7 +19,7 @@ void loop() {
   unsigned long start_time = millis();
 
   float val = analogRead(A7);
-  float volts = val * (5.0/1024.0) * ((56.0+10.0)/10.0)*(12.02/12.31);
+  float volts = val * (5.0/1024.0) * ((56.0+10.0)/10.0)*(12.02/12.31)*(25.07/25.39);
 
   float adjusted_range_volts = volts - 15.0;
 
