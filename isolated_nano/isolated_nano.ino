@@ -21,12 +21,19 @@ void loop() {
   float val = analogRead(A7);
   float volts = val * (5.0/1024.0) * ((56.0+10.0)/10.0)*(12.02/12.31);
 
-  float adjusted_range_volts = volts - 18.0;
+  float adjusted_range_volts = volts - 15.0;
 
   if(adjusted_range_volts < 0)
     adjusted_range_volts = 0;
 
-  byte raw = adjusted_range_volts * 255.0 / 10.0;
+  float raw_float = adjusted_range_volts * 255.0 / 10.0;
+
+  byte raw = 0;
+  if(raw_float > 255.0)
+    raw = 255;
+  else
+    raw = raw_float;
+
   Serial.write(raw);
 
   if(millis() - start_time < loop_delay) {
