@@ -32,6 +32,9 @@ char frameid[] = "/short_distance_lidar";
 iarc7_msgs::Float64Stamped battery_msg;
 ros::Publisher battery_pub("motor_battery", &battery_msg);
 
+iarc7_msgs::Float64Stamped looptime_msg;
+ros::Publisher looptime_pub("teensy_looptime_millis", &looptime_msg);
+
 const int LS_LEFT=5;
 const int LS_RIGHT=2;
 const int LS_FRONT=4;
@@ -61,6 +64,7 @@ void setup()
   nh.advertise(foot_switches);
   nh.advertise(rangefinder_pub);
   nh.advertise(battery_pub);
+  nh.advertise(looptime_pub);
 
   pinMode(LS_LEFT, INPUT_PULLUP);
   pinMode(LS_RIGHT, INPUT_PULLUP);
@@ -135,6 +139,10 @@ void loop()
         Serial3.read();
     }
   }
+
+  looptime_msg.header.stamp = nh.now();
+  looptime_msg.data = millis() - start_time;
+  looptime_pub.publish(&looptime_msg);
 
   nh.spinOnce();
 
