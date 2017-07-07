@@ -26,7 +26,7 @@ void loop() {
   if(adjusted_range_volts < 0)
     adjusted_range_volts = 0;
 
-  float raw_float = adjusted_range_volts * 255.0 / 10.0;
+  float raw_float = adjusted_range_volts * 255.0 / 11.0;
 
   byte raw = 0;
   if(raw_float > 255.0)
