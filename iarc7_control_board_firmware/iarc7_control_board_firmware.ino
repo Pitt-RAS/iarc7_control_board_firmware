@@ -127,7 +127,7 @@ void loop()
   if(Serial3.available() > 0) {
     battery_msg.header.stamp = nh.now();
     //battery_msg.data = (float)analogRead(BATTERY_PIN) * BATTERY_VOLTAGE_DIVIDER_RATIO;
-    battery_msg.data = (Serial3.read() * 10.0/255.0)+18.0;
+    battery_msg.data = (Serial3.read() * 11.0/255.0)+15.0;
     battery_pub.publish(&battery_msg);
     Serial.println(battery_msg.data);
 
