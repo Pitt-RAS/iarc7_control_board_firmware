@@ -116,10 +116,10 @@ void loop()
   //Serial.print("millis "); Serial.println(millis() - start_time);
 
   foot_switches_state.header.stamp = nh.now();
-  foot_switches_state.right = right.read();
-  foot_switches_state.left = left.read();
-  foot_switches_state.front = front.read();
-  foot_switches_state.back = back.read();
+  foot_switches_state.right = !right.read();
+  foot_switches_state.left = !left.read();
+  foot_switches_state.front = !front.read();
+  foot_switches_state.back = !back.read();
   foot_switches.publish( &foot_switches_state );
 
   //Serial.print("millis "); Serial.println(millis() - start_time);
