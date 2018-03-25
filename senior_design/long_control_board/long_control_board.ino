@@ -4,7 +4,7 @@
 //#include <sensor_msgs/Range.h>
 #include <iarc7_msgs/Nano.h>
 #include <Wire.h>
-#include <VL53L0X.h>
+#include "src/vl53l0x-arduino/VL53L0X.h"
 VL53L0X sensor;
 ros::NodeHandle nh;
 
@@ -54,14 +54,15 @@ void loop()
               unsigned int t2 = SoftSrial.read(); //Byte4
               t2 <<= 8;
               t2 += t1;
-              if(t2 < 1000)
-              {
+              //if(t2 < 1000)
+              //{
 //                Serial.print(t2);
 //                Serial.print('\t');
 //                Serial.print('\n');
                   sensors_msgs.long_range = (float)(t2/100.0);
                   sensors_msgs.msg_received = nh.now();
-              }
+                  current_time = micros();
+              //}
               t1 = SoftSrial.read(); //Byte5
               t2 = SoftSrial.read(); //Byte6
               t2 <<= 8;
@@ -113,7 +114,6 @@ void loop()
               //Serial.print(", Y: ");
               //Serial.print(deltaY);
               //Serial.print("\n");
-              current_time = micros();
 //
               //Serial.print(loop_check3);
               //Serial.print("\n");
