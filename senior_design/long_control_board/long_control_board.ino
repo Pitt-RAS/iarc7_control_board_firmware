@@ -8,6 +8,8 @@
 VL53L0X sensor;
 ros::NodeHandle nh;
 
+#define bitRead(value, bit) (((value) >> (bit)) & 0x01)
+
 SoftwareSerial SoftSrial(9, 7); // RX, TX
 // Using digital pin 10 for chip select
 Bitcraze_PMW3901 flow(10);
@@ -37,7 +39,8 @@ void setup()
 }
 
 int16_t deltaX,deltaY;
-int voltagePin = A0;
+int batteryPin = A0;
+int currentPin = A6;
 
 void loop()
 {
@@ -94,15 +97,17 @@ void loop()
 
               
               for(int i = 0; i < voltage_sensor_average; i++) {
-                ADCCountsVolts += analogRead(voltagePin);
+                ADCCountsVolts += analogRead(batteryPin);
                 delayMicroseconds(50);
               }
+
+              
               
               sensors_msgs.battery_offset = micros() - current_time;
               
-              ADCCountsVolts = ADCCountsVolts*5*4.9*12.4/voltage_sensor_average;
+              ADCCountsVolts = ADCCountsVolts*5*4.9*12.4/(1024*14.16);
 
-              sensors_msgs.battery_voltage = (float)ADCCountsVolts/(1024*14.16);
+              sensors_msgs.battery_voltage = (float)ADCCountsVolts/voltage_sensor_average;
               
               //Serial.print("\n");
               //Serial.print("Two\n");
@@ -121,6 +126,25 @@ void loop()
               nh.spinOnce();
           }
        }
+
+ uint32_t motorCurrents[8];
+ uint32_t motorCurrent;      
+              for(int i = 0; i < 8; i++){
+                digitalWrite(2, bitRead(i, 0));
+                digitalWrite(3, bitRead(i, 1));
+                digitalWrite(4, bitRead(i, 2));
+                motorCurrent = analogRead(currentPin);
+                motorCurrent = motorCurrent*5*4.9*12.4;
+                motorCurrent = motorCurrent/(1024*14.16);
+                motorCurrents[i] = motorCurrent/.026;
+              }        
     }
-    
+
+
+/*
+ * ADCVolts = ADCVal * 5/1024
+ * ADCVolts = (ADCVolts - 1.23)*1.23
+ * 
+ */
+ 
 
