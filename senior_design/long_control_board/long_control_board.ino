@@ -60,6 +60,11 @@ void loop()
 //                Serial.print('\t');
 //                Serial.print('\n');
                   sensors_msgs.long_range = (float)(t2/100.0);
+
+                  if(sensors_msgs.long_range > 15.0) {
+                    sensors_msgs.long_range = 15.0;
+                  }
+                  
                   sensors_msgs.msg_received = nh.now();
                   current_time = micros();
               //}
