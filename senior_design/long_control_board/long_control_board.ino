@@ -72,9 +72,9 @@ void setup()
 int16_t deltaX,deltaY;
 int batteryPin = A7;
 int currentPin = A6;
-uint16_t volt_samples;
-float voltage_samples[5];
-
+float voltage_samples[6];
+const int filter_order = 5;
+float taps[filter_order+1] = {0.0102, 0.1177, 0.3721, 0.3721, 0.1177, 0.0102};
 void loop()
 {
     if(SoftSrial.available() >= 9)
@@ -108,7 +108,7 @@ void loop()
                   SoftSrial.read(); ////Byte7,8,9
               }
 
-              if(sensor.checkReady())
+              /*if(sensor.checkReady())
               {
                   sensors_msgs.short_range = sensor.readRangeContinuousMillimeters()/1000.0;
                   sensors_msgs.short_range_offset = micros() - current_time;                           
@@ -116,52 +116,40 @@ void loop()
               else
               {
                 sensors_msgs.short_range_offset = 0;
-              }
+              }*/
        
               flow.readMotionCount(&deltaX, &deltaY);
       
               sensors_msgs.deltaX = deltaX;
               sensors_msgs.deltaY = deltaY;
               sensors_msgs.flow_board_offset = micros() - current_time;
-              
-              int voltage_sample_number = 5;
 
-              float ADCCountsVolts = 0;
+              int num_adc_samples = 10;
+              uint32_t raw_adc = 0;
+              for(int i = 0 ; i < num_adc_samples ; i++)
+              {
+                raw_adc += analogRead(batteryPin);
+                delayMicroseconds(100);
+              }
 
-//              for(int i = voltage_sample_number-2; i > -1 ; i = i-1) {
-//                  voltage_samples[i+1] = voltage_samples[i];
-//              }
+              float final_raw_adc = (float)raw_adc/(float)num_adc_samples;
 
-              for(int i = 0; i < voltage_sample_number - 1; i++){
+              for(int i = 0; i < filter_order; i++){
                   voltage_samples[i+1] = voltage_samples[i];
               }
 
-              for(int i = 0 ; i < 10 ; i++)
-              {
-                volt_samples += analogRead(batteryPin);
-                delayMicroseconds(100);
-              }
-              
-              voltage_samples[0] = volt_samples / 10;
-              volt_samples = 0;              
-
-              //Serial.print(ADCCountsVolts/voltage_sensor_average);
-              //Serial.print(", ");
+              voltage_samples[0] = final_raw_adc;
                        
               sensors_msgs.battery_offset = micros() - current_time;
 
-              ADCCountsVolts = convolute_with_lp(voltage_samples);
-
-              ADCCountsVolts = (ADCCountsVolts*0.07984)- 20.58;
+              float final_voltage = (convolute_with_lp(voltage_samples)*0.0749)- 17.4;
               
-              if(ADCCountsVolts < 0)
+              if(final_voltage < 0)
               {
-                ADCCountsVolts = 0;
+                final_voltage = 0;
               }
 
-              sensors_msgs.battery_voltage = ADCCountsVolts;
-              //Serial.print(sensors_msgs.battery_voltage);
-              //Serial.println();
+              sensors_msgs.battery_voltage = final_voltage;
 
               sensors_pub.publish(&sensors_msgs);
 
@@ -189,12 +177,16 @@ void turnSideRotors(iarc7_msgs::Float64ArrayStamped esc_commands)
  * ADCVolts = (ADCVolts - 1.23)*1.23
  * 
  */
- 
+
+
+
 int convolute_with_lp(float samples[])
 {
 
-    return (0.0102 * samples[0] + 0.1177 * samples[1] + 0.3721 * samples[2] 
-    + 0.3721 * samples[3] + 0.1177 * samples[4] + 0.0102*samples[5]);
-  
+    float sum = 0;
+    for(int i = 0; i < filter_order + 1; i++) {
+      sum+=samples[i]*taps[i];
+    }
+    return sum;
 }
 
