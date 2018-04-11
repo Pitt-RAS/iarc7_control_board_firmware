@@ -2,19 +2,18 @@
 #include <ros.h>
 #include <SoftwareSerial.h>
 #include "Bitcraze_PMW3901.h"
-//#include <sensor_msgs/Range.h>
 #include <iarc7_msgs/Nano.h>
-#include <iarc7_msgs/FlightControllerStatus.h>
-#include <iarc7_msgs/Float64ArrayStamped.h>
+#include <iarc7_msgs/ESCCommand.h>
 #include <Wire.h>
 #include <VL53L0X.h>
 VL53L0X sensor;
 ros::NodeHandle nh;
 
+#define CONVERT_TO_PWM(x) ((((float)x/255)*(1000))+1000)
+
 #define bitRead(value, bit) (((value) >> (bit)) & 0x01)
 
-void getFcStatus(iarc7_msgs::FlightControllerStatus fc_status);
-void turnSideRotors(iarc7_msgs::Float64ArrayStamped esc_commands);
+int runSideRotors(iarc7_msgs::ESCCommand esc_commands);
 int convolute_with_lp(float samples[]);
 
 SoftwareSerial SoftSrial(9, 7); // RX, TX
@@ -24,15 +23,16 @@ Bitcraze_PMW3901 flow(10);
 iarc7_msgs::Nano sensors_msgs;
 ros::Publisher sensors_pub("nano_data", &sensors_msgs);
 
+ros::Subscriber<iarc7_msgs::ESCCommand> sub("esc_commands", &runSideRotors);
+
 int minPulse = 900;
 int minThrottle = 1000;
 int maxThrottle = 2000;
 
-
-Servo esc1;
-Servo esc2;
-Servo esc3;
-Servo esc4;
+Servo esc_front;
+Servo esc_back;
+Servo esc_left;
+Servo esc_right;
 
 void setup()
 {
@@ -58,13 +58,16 @@ void setup()
     sensor.startContinuous();
     
 
-    esc1.attach(A0, minPulse, maxThrottle);
-    esc2.attach(A1, minPulse, maxThrottle);
-    esc3.attach(A2, minPulse, maxThrottle);
-    esc4.attach(A3, minPulse, maxThrottle);
-    esc1.writeMicroseconds(minPulse);
-    
+    esc_front.attach(A0, minPulse, maxThrottle);
+    esc_back.attach(A1, minPulse, maxThrottle);
+    esc_left.attach(A2, minPulse, maxThrottle);
+    esc_right.attach(A3, minPulse, maxThrottle);
+    esc_front.writeMicroseconds(minPulse);
+    esc_back.writeMicroseconds(minPulse);
+    esc_left.writeMicroseconds(minPulse);
+    esc_right.writeMicroseconds(minPulse);
 
+    // To start up, the ESC's must be sent a min pulse for a short period of time.
     delay(2000);
     
 }
@@ -75,8 +78,20 @@ int currentPin = A6;
 float voltage_samples[6];
 const int filter_order = 5;
 float taps[filter_order+1] = {0.0102, 0.1177, 0.3721, 0.3721, 0.1177, 0.0102};
+
+long flow_wait = millis();
+
+
 void loop()
 {
+
+    for(int i = 0; i < 255; i++)
+    {
+      Serial.print(i);
+      Serial.println();
+      Serial.print(CONVERT_TO_PWM(i));
+      Serial.println();
+    }
     if(SoftSrial.available() >= 9)
     { 
 
@@ -108,7 +123,7 @@ void loop()
                   SoftSrial.read(); ////Byte7,8,9
               }
 
-              /*if(sensor.checkReady())
+              if(sensor.checkReady())
               {
                   sensors_msgs.short_range = sensor.readRangeContinuousMillimeters()/1000.0;
                   sensors_msgs.short_range_offset = micros() - current_time;                           
@@ -116,13 +131,20 @@ void loop()
               else
               {
                 sensors_msgs.short_range_offset = 0;
-              }*/
-       
-              flow.readMotionCount(&deltaX, &deltaY);
-      
-              sensors_msgs.deltaX = deltaX;
-              sensors_msgs.deltaY = deltaY;
-              sensors_msgs.flow_board_offset = micros() - current_time;
+              }
+
+
+              if(millis() - flow_wait > 33)
+              {
+                flow.readMotionCount(&deltaX, &deltaY);
+                flow_wait = millis();
+                sensors_msgs.deltaX = deltaX;
+                sensors_msgs.deltaY = deltaY;
+                sensors_msgs.flow_board_offset = micros() - current_time;
+              }
+              else {
+                sensors_msgs.flow_board_offset = 0;
+              }
 
               int num_adc_samples = 10;
               uint32_t raw_adc = 0;
@@ -159,26 +181,14 @@ void loop()
    
     }
 
-void getFcStatus(iarc7_msgs::FlightControllerStatus fc_status)
+int runSideRotors(iarc7_msgs::ESCCommand esc_commands)
 {
-    
+    esc_front.writeMicroseconds(CONVERT_TO_PWM(esc_commands.front_motor_PWM));
+    esc_back.writeMicroseconds(CONVERT_TO_PWM(esc_commands.back_motor_PWM));
+    esc_left.writeMicroseconds(CONVERT_TO_PWM(esc_commands.left_motor_PWM));
+    esc_right.writeMicroseconds(CONVERT_TO_PWM(esc_commands.right_motor_PWM));
+      
 }
-
-
-void turnSideRotors(iarc7_msgs::Float64ArrayStamped esc_commands)
-{
-
-    
-}
-
-
-/*
- * ADCVolts = ADCVal * 5/1024
- * ADCVolts = (ADCVolts - 1.23)*1.23
- * 
- */
-
-
 
 int convolute_with_lp(float samples[])
 {
