@@ -11,8 +11,6 @@ ros::NodeHandle nh;
 
 #define CONVERT_TO_PWM(x) ((((float)x/255)*(1000))+1000)
 
-#define bitRead(value, bit) (((value) >> (bit)) & 0x01)
-
 int runSideRotors(iarc7_msgs::ESCCommand esc_commands);
 int convolute_with_lp(float samples[]);
 
@@ -28,11 +26,6 @@ ros::Subscriber<iarc7_msgs::ESCCommand> sub("esc_commands", &runSideRotors);
 int minPulse = 900;
 int minThrottle = 1000;
 int maxThrottle = 2000;
-
-Servo esc_front;
-Servo esc_back;
-Servo esc_left;
-Servo esc_right;
 
 void setup()
 {
@@ -56,19 +49,18 @@ void setup()
   
     sensor.setTimeout(500);
     sensor.startContinuous();
-    
 
-    esc_front.attach(A0, minPulse, maxThrottle);
-    esc_back.attach(A1, minPulse, maxThrottle);
-    esc_left.attach(A2, minPulse, maxThrottle);
-    esc_right.attach(A3, minPulse, maxThrottle);
-    esc_front.writeMicroseconds(minPulse);
-    esc_back.writeMicroseconds(minPulse);
-    esc_left.writeMicroseconds(minPulse);
-    esc_right.writeMicroseconds(minPulse);
+
+
+  for(int i = 0; i < 3000; i++) {
+    PORTC = PORTC | B11100000;
+    delayMicroseconds(120);
+    PORTC = PORTC & B00011111;
+    delayMicroseconds(1880);
+  }
 
     // To start up, the ESC's must be sent a min pulse for a short period of time.
-    delay(2000);
+    delay(5000);
     
 }
 
@@ -85,27 +77,22 @@ long flow_wait = millis();
 void loop()
 {
 
-    for(int i = 0; i < 255; i++)
-    {
-      Serial.print(i);
-      Serial.println();
-      Serial.print(CONVERT_TO_PWM(i));
-      Serial.println();
-    }
+    //esc_front.writeMicroseconds(1500);
     if(SoftSrial.available() >= 9)
     { 
-
+          delayMicroseconds(3);
+      
           while(0x59 != SoftSrial.read());
           if(0x59 == SoftSrial.read())
           {
-              
+              Serial.println("We have started reading");
               unsigned int t1 = SoftSrial.read(); //Byte3
               unsigned int t2 = SoftSrial.read(); //Byte4
               
               t2 <<= 8;
               t2 += t1;
               
-              if(t2 < 1000)
+              if(t2 < 200)
               {
                   sensors_msgs.long_range = (float)(t2/100.0);
               }
@@ -133,6 +120,11 @@ void loop()
                 sensors_msgs.short_range_offset = 0;
               }
 
+              if(sensors_msgs.short_range > 300)
+              {
+                sensors_msgs.short_range = 0;
+              }
+
 
               if(millis() - flow_wait > 33)
               {
@@ -146,7 +138,7 @@ void loop()
                 sensors_msgs.flow_board_offset = 0;
               }
 
-              int num_adc_samples = 10;
+              int num_adc_samples = 2;
               uint32_t raw_adc = 0;
               for(int i = 0 ; i < num_adc_samples ; i++)
               {
@@ -171,7 +163,7 @@ void loop()
                 final_voltage = 0;
               }
 
-              sensors_msgs.battery_voltage = final_voltage;
+              sensors_msgs.battery_voltage = final_voltage/3;
 
               sensors_pub.publish(&sensors_msgs);
 
@@ -183,11 +175,28 @@ void loop()
 
 int runSideRotors(iarc7_msgs::ESCCommand esc_commands)
 {
-    esc_front.writeMicroseconds(CONVERT_TO_PWM(esc_commands.front_motor_PWM));
-    esc_back.writeMicroseconds(CONVERT_TO_PWM(esc_commands.back_motor_PWM));
-    esc_left.writeMicroseconds(CONVERT_TO_PWM(esc_commands.left_motor_PWM));
-    esc_right.writeMicroseconds(CONVERT_TO_PWM(esc_commands.right_motor_PWM));
-      
+    // The first bit corresponds to A0, second to A1, etc.
+    PORTC = PORTC | B10000000;
+    delayMicroseconds(esc_commands.front_motor_PWM);
+    PORTC = PORTC & B01111111;
+    
+    PORTC = PORTC | B01000000;
+    delayMicroseconds(esc_commands.back_motor_PWM);
+    PORTC = PORTC & B10111111;
+    
+    PORTC = PORTC | B00100000;
+    delayMicroseconds(esc_commands.back_motor_PWM);
+    PORTC = PORTC & B11011111;
+    
+    PORTC = PORTC | B00010000;
+    delayMicroseconds(esc_commands.back_motor_PWM);
+    PORTC = PORTC & B11101111;
+
+    // Probably delayed up to at least 400 us at this point, so 
+    // only delay 1.4 ms
+
+    delayMicroseconds(1400);
+
 }
 
 int convolute_with_lp(float samples[])
