@@ -9,8 +9,6 @@
 VL53L0X sensor;
 ros::NodeHandle nh;
 
-#define CONVERT_TO_PWM(x) ((((float)x/255)*(1000))+1000)
-
 int runSideRotors(iarc7_msgs::ESCCommand esc_commands);
 int convolute_with_lp(float samples[]);
 
@@ -51,16 +49,13 @@ void setup()
     sensor.startContinuous();
 
 
-
+  // To start up, the ESC's must be sent a min pulse for a short period of time.
   for(int i = 0; i < 3000; i++) {
     PORTC = PORTC | B11100000;
     delayMicroseconds(120);
     PORTC = PORTC & B00011111;
     delayMicroseconds(1880);
   }
-
-    // To start up, the ESC's must be sent a min pulse for a short period of time.
-    delay(5000);
     
 }
 
@@ -73,26 +68,25 @@ float taps[filter_order+1] = {0.0102, 0.1177, 0.3721, 0.3721, 0.1177, 0.0102};
 
 long flow_wait = millis();
 
+unsigned long raw_adc = 0;
+int num_adc_samples = 0;
 
 void loop()
 {
 
     //esc_front.writeMicroseconds(1500);
     if(SoftSrial.available() >= 9)
-    { 
-          delayMicroseconds(3);
-      
+    {       
           while(0x59 != SoftSrial.read());
           if(0x59 == SoftSrial.read())
           {
-              Serial.println("We have started reading");
               unsigned int t1 = SoftSrial.read(); //Byte3
               unsigned int t2 = SoftSrial.read(); //Byte4
               
               t2 <<= 8;
               t2 += t1;
               
-              if(t2 < 200)
+              if(t2 < 1000)
               {
                   sensors_msgs.long_range = (float)(t2/100.0);
               }
@@ -120,12 +114,6 @@ void loop()
                 sensors_msgs.short_range_offset = 0;
               }
 
-              if(sensors_msgs.short_range > 300)
-              {
-                sensors_msgs.short_range = 0;
-              }
-
-
               if(millis() - flow_wait > 33)
               {
                 flow.readMotionCount(&deltaX, &deltaY);
@@ -138,15 +126,9 @@ void loop()
                 sensors_msgs.flow_board_offset = 0;
               }
 
-              int num_adc_samples = 2;
-              uint32_t raw_adc = 0;
-              for(int i = 0 ; i < num_adc_samples ; i++)
-              {
-                raw_adc += analogRead(batteryPin);
-                delayMicroseconds(100);
-              }
-
               float final_raw_adc = (float)raw_adc/(float)num_adc_samples;
+              raw_adc = 0;
+              num_adc_samples = 0;
 
               for(int i = 0; i < filter_order; i++){
                   voltage_samples[i+1] = voltage_samples[i];
@@ -169,34 +151,36 @@ void loop()
 
               nh.spinOnce();
           }
-       }
-   
     }
 
+    raw_adc += analogRead(batteryPin);
+    num_adc_samples++;
+    delayMicroseconds(100);
+}
+
+unsigned long last_esc_update = 0;
 int runSideRotors(iarc7_msgs::ESCCommand esc_commands)
 {
-    // The first bit corresponds to A0, second to A1, etc.
-    PORTC = PORTC | B10000000;
-    delayMicroseconds(esc_commands.front_motor_PWM);
-    PORTC = PORTC & B01111111;
-    
-    PORTC = PORTC | B01000000;
-    delayMicroseconds(esc_commands.back_motor_PWM);
-    PORTC = PORTC & B10111111;
-    
-    PORTC = PORTC | B00100000;
-    delayMicroseconds(esc_commands.back_motor_PWM);
-    PORTC = PORTC & B11011111;
-    
-    PORTC = PORTC | B00010000;
-    delayMicroseconds(esc_commands.back_motor_PWM);
-    PORTC = PORTC & B11101111;
-
-    // Probably delayed up to at least 400 us at this point, so 
-    // only delay 1.4 ms
-
-    delayMicroseconds(1400);
-
+    if(micros() - last_esc_update > 1000) {
+        last_esc_update = micros();
+  
+        // The first bit corresponds to A0, second to A1, etc.
+        PORTC = PORTC | B10000000;
+        delayMicroseconds(esc_commands.front_motor_PWM);
+        PORTC = PORTC & B01111111;
+        
+        PORTC = PORTC | B01000000;
+        delayMicroseconds(esc_commands.back_motor_PWM);
+        PORTC = PORTC & B10111111;
+        
+        PORTC = PORTC | B00100000;
+        delayMicroseconds(esc_commands.back_motor_PWM);
+        PORTC = PORTC & B11011111;
+        
+        PORTC = PORTC | B00010000;
+        delayMicroseconds(esc_commands.back_motor_PWM);
+        PORTC = PORTC & B11101111;
+    }
 }
 
 int convolute_with_lp(float samples[])
