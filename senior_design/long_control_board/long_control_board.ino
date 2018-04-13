@@ -21,10 +21,6 @@ ros::Publisher sensors_pub("nano_data", &sensors_msgs);
 
 ros::Subscriber<iarc7_msgs::ESCCommand> sub("esc_commands", &runSideRotors);
 
-int minPulse = 900;
-int minThrottle = 1000;
-int maxThrottle = 2000;
-
 unsigned long last_esc_update = 0;
 unsigned long last_run_side_rotors = 0;
 
@@ -90,6 +86,8 @@ unsigned long long_range_reading_time = 0;
 unsigned long short_range_reading_time = 0;
 unsigned long flow_board_reading_time = 0;
 
+unsigned long last_long_range_reading_time = 0;
+
 void loop()
 {
     // We avoid checking the software serial buffer at a  
@@ -117,28 +115,10 @@ void loop()
 
           for(int i=0; i<5; i++)
           {
-              unsigned int t1 = SoftSrial.read(); //Byte3
-              unsigned int t2 = SoftSrial.read(); //Byte4
-              
-              t2 <<= 8;
-              t2 += t1;
-              
-              if(t2 < 1000)
-              {
-                  sensors_msgs.long_range = (float)(t2/100.0);
-              }
-              long_range_reading_time = micros();
-              
-              t1 = SoftSrial.read(); //Byte5
-              t2 = SoftSrial.read(); //Byte6
-              t2 <<= 8;
-              t2 += t1;
-
-              for(int i=0; i<3; i++)
-              {
-                  SoftSrial.read(); ////Byte7,8,9
-              }
+              SoftSrial.read(); ////Byte5-9
           }
+        }
+      }
     }
 
     // checkReady is a custom function added to the vl35l0x library
@@ -166,7 +146,7 @@ void loop()
       right_PWM = 125;
     }
     
-    if(micros() - last_esc_update > 5000) {
+    if(micros() - last_esc_update > 20000) {
       last_esc_update = micros();
       updateESC();
     }
@@ -180,7 +160,7 @@ void loop()
       unsigned long current_time = micros();
 
       if(long_range_reading_time > 0) {
-        sensors_msgs.long_range_offset = (current_time - long_range_reading_time)/1000;
+        sensors_msgs.long_range_offset = (current_time - long_range_reading_time)/10;
         long_range_reading_time = 0;
       }
       else {
@@ -188,7 +168,7 @@ void loop()
       }
 
       if(short_range_reading_time > 0) {
-        sensors_msgs.short_range_offset = (current_time - short_range_reading_time)/1000;
+        sensors_msgs.short_range_offset = (current_time - short_range_reading_time)/10;
         short_range_reading_time = 0;
       }
       else {
@@ -196,7 +176,7 @@ void loop()
       }
 
       if(flow_board_reading_time > 0) {
-        sensors_msgs.flow_board_offset = (current_time - flow_board_reading_time)/1000;
+        sensors_msgs.flow_board_offset = (current_time - flow_board_reading_time)/10;
         flow_board_reading_time = 0;
       }
       else {
@@ -239,7 +219,7 @@ void updateESC() {
     PORTC = PORTC & B11111110;
     interrupts();
     
-    const int inter_pulse_delay = 200;
+    const int inter_pulse_delay = 100;
     delayMicroseconds(inter_pulse_delay);
     
     noInterrupts();
