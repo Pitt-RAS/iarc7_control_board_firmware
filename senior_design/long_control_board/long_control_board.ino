@@ -207,8 +207,8 @@ void loop()
       raw_adc = 0;
       num_adc_samples = 0;
 
-      for(int i = 0; i < filter_order; i++){
-          voltage_samples[i+1] = voltage_samples[i];
+      for(int i = filter_order; i > 0; i--){
+          voltage_samples[i] = voltage_samples[i-1];
       }
 
       voltage_samples[0] = final_raw_adc;
