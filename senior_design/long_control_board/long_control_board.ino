@@ -30,7 +30,6 @@ unsigned long last_run_side_rotors = 0;
 
 void setup()
 {
-    // Don't forget to run roscore!
     nh.getHardware()->setBaud(115200);
     nh.initNode();
     nh.advertise(sensors_pub);
@@ -44,10 +43,7 @@ void setup()
     SoftSrial.begin(115200);
     Serial.begin(115200);
   
-    if (!flow.begin()) {
-      //Serial.println("Initialization of the flow sensor failed");
-      //while(1) { }
-     }
+    flow.begin();
   
     Wire.begin();
   
@@ -60,6 +56,9 @@ void setup()
   // To start up, the ESC's must be sent a min pulse for a short period of time.
   for(int i = 0; i < 1000; i++) {
     PORTC = PORTC | B00001111;
+
+    // The intended delay is 120 us. The -4 is to make sure that the pulse width is 
+    // no longer than 120 us.
     delayMicroseconds(120-4);
     PORTC = PORTC & B11110000;
     delayMicroseconds(1500);
@@ -72,6 +71,8 @@ int batteryPin = A7;
 int currentPin = A6;
 float voltage_samples[6];
 const int filter_order = 5;
+
+// Kaiser window filter (with linear phase)
 float taps[filter_order+1] = {0.0102, 0.1177, 0.3721, 0.3721, 0.1177, 0.0102};
 
 unsigned long flow_wait = micros();
@@ -79,6 +80,7 @@ unsigned long flow_wait = micros();
 unsigned long raw_adc = 0;
 int num_adc_samples = 0;
 
+// A pulse width of 125 us corresponds to 0 throttle.
 uint8_t front_PWM = 125;
 uint8_t back_PWM = 125;
 uint8_t right_PWM = 125;
@@ -90,10 +92,30 @@ unsigned long flow_board_reading_time = 0;
 
 void loop()
 {
-    if(SoftSrial.available() >= 9)
-    {
-          while(0x59 != SoftSrial.read());
-          if(0x59 == SoftSrial.read())
+    // We avoid checking the software serial buffer at a  
+    // rate higher than the update rate of the long range lidar
+    if(micros() - last_long_range_reading_time > 5000) {
+      while(SoftSrial.available() < 9){};
+      last_long_range_reading_time = micros();
+
+      if(SoftSrial.available() >= 9)
+      {
+        while(0x59 != SoftSrial.read());
+        if(0x59 == SoftSrial.read())
+        {
+          unsigned int t1 = SoftSrial.read(); //Byte3
+          unsigned int t2 = SoftSrial.read(); //Byte4
+          
+          t2 <<= 8;
+          t2 += t1;
+          
+          if(t2 < 1000)
+          {
+              sensors_msgs.long_range = (float)(t2/100.0);
+              long_range_reading_time = last_long_range_reading_time;
+          }
+
+          for(int i=0; i<5; i++)
           {
               unsigned int t1 = SoftSrial.read(); //Byte3
               unsigned int t2 = SoftSrial.read(); //Byte4
@@ -119,13 +141,16 @@ void loop()
           }
     }
 
+    // checkReady is a custom function added to the vl35l0x library
     if(sensor.checkReady())
     {
         sensors_msgs.short_range = sensor.readRangeContinuousMillimeters()/1000.0;
         short_range_reading_time = micros();
     }
 
-    if(micros() - flow_wait > 33000)
+    // Purposefully check the flow sensor at a rate lower than the 
+    // max update rate to allow it to accumulate longer
+    if(micros() - flow_wait > 20000)
     {
       flow_wait = micros();
       flow.readMotionCount(&deltaX, &deltaY);
@@ -188,7 +213,6 @@ void loop()
 
       voltage_samples[0] = final_raw_adc;
                
-      //float final_voltage = (convolute_with_lp(voltage_samples)*0.0343)- 15.7;
       float final_voltage = final_raw_adc * 0.0343 - 15.7;
       if(final_voltage < 0)
       {
@@ -204,6 +228,7 @@ void loop()
     raw_adc += analogRead(batteryPin);
     num_adc_samples++;
     delayMicroseconds(100);
+    nh.spinOnce();
 }
 
 void updateESC() {
@@ -240,6 +265,8 @@ void updateESC() {
     interrupts();
 }
 
+// The ESC protocol requires that we send out a pulse every 20 ms and not every time
+// we get an update from the main computer.
 int runSideRotors(iarc7_msgs::ESCCommand esc_commands)
 {
   last_run_side_rotors = micros();
@@ -249,6 +276,7 @@ int runSideRotors(iarc7_msgs::ESCCommand esc_commands)
   left_PWM = esc_commands.left_motor_PWM;
 }
 
+// For the battery voltage readings
 int convolute_with_lp(float samples[])
 {
     float sum = 0;
