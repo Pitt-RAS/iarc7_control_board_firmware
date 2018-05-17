@@ -1,6 +1,6 @@
 #include <Servo.h> 
 #include <ros.h>
-#include <SoftwareSerial.h>
+//#include <SoftwareSerial.h>
 #include <iarc7_msgs/Nano.h>
 #include <iarc7_msgs/ESCCommand.h>
 #include <Wire.h>
@@ -9,16 +9,19 @@
 #include "Bitcraze_PMW3901.h"
 
 // https://github.com/pololu/vl53l1x-st-api-arduino
-#include <vl53l1_api.h>
+//#include <vl53l1_api.h>
 
-VL53L1_Dev_t vl53l1x;
+//VL53L1_Dev_t vl53l1x;
+
+#include "SparkFun_VL53L1X_Arduino_Library.h"
+VL53L1X distanceSensor;
 
 ros::NodeHandle nh;
 
 int runSideRotors(const iarc7_msgs::ESCCommand& esc_commands);
 int convolute_with_lp(float samples[]);
 
-SoftwareSerial SoftSrial(9, 7); // RX, TX
+//SoftwareSerial SoftSrial(9, 7); // RX, TX
 // Using digital pin 10 for chip select
 Bitcraze_PMW3901 flow(10);
 
@@ -42,7 +45,7 @@ void setup()
 
     analogReference(EXTERNAL);
 
-    SoftSrial.begin(115200);
+    //SoftSrial.begin(115200);
     Serial.begin(115200);
 
     flow.begin();
@@ -50,16 +53,18 @@ void setup()
     // Initialize VL53L1X
     Wire.begin();
     Wire.setClock(400000);
-    vl53l1x.I2cDevAddr = 0x52;
+    distanceSensor.begin();
 
-    VL53L1_software_reset(&vl53l1x);
+    //vl53l1x.I2cDevAddr = 0x52;
+
+    /*VL53L1_software_reset(&vl53l1x);
     VL53L1_WaitDeviceBooted(&vl53l1x);
     VL53L1_DataInit(&vl53l1x);
     VL53L1_StaticInit(&vl53l1x);
     VL53L1_SetDistanceMode(&vl53l1x, VL53L1_DISTANCEMODE_LONG);
     VL53L1_SetMeasurementTimingBudgetMicroSeconds(&vl53l1x, 50000);
     VL53L1_SetInterMeasurementPeriodMilliSeconds(&vl53l1x, 50);
-    VL53L1_StartMeasurement(&vl53l1x);
+    VL53L1_StartMeasurement(&vl53l1x);*/
 
     // To start up, the ESC's must be sent a min pulse for a short period of time.
     for(int i = 0; i < 1000; i++) {
@@ -71,7 +76,7 @@ void setup()
         PORTC = PORTC & B11110000;
         delayMicroseconds(1500);
     }
-
+    distanceSensor.startMeasurement(); //Write configuration bytes to initiate measurement
 }
 
 int16_t deltaX,deltaY;
@@ -133,20 +138,14 @@ void loop()
       }
     }*/
 
-    uint8_t vl53l1x_ready;
-    int vl53l1x_status = VL53L1_GetMeasurementDataReady(&vl53l1x,
-                                                        &vl53l1x_ready);
-    if (vl53l1x_status == VL53L1_ERROR_NONE && vl53l1x_ready == 1) {
-        VL53L1_RangingMeasurementData_t ranging_data;
-        vl53l1x_status = VL53L1_GetRangingMeasurementData(&vl53l1x,
-                                                          &ranging_data);
-        if (vl53l1x_status == VL53L1_ERROR_NONE) {
-            sensors_msgs.short_range = ranging_data.RangeMilliMeter / 1000.0;
+    if (distanceSensor.newDataReady()) {
+        sensors_msgs.short_range = (float)distanceSensor.getDistance() / 1000.0; //Get the result of the measurement from the sensor
+        byte status = distanceSensor.getRangeStatus();
+        if(status == 0) {
             short_range_reading_time = micros();
-            VL53L1_ClearInterruptAndStartMeasurement(&vl53l1x);
+            distanceSensor.startMeasurement(); //Write configuration bytes to initiate measurement 
         }
     }
-
     // Purposefully check the flow sensor at a rate lower than the 
     // max update rate to allow it to accumulate longer
     if(micros() - flow_wait > 20000)
