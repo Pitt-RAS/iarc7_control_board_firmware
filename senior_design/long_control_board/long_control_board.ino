@@ -1,15 +1,21 @@
 #include <Servo.h> 
 #include <ros.h>
 #include <SoftwareSerial.h>
-#include "Bitcraze_PMW3901.h"
 #include <iarc7_msgs/Nano.h>
 #include <iarc7_msgs/ESCCommand.h>
 #include <Wire.h>
-#include <VL53L0X.h>
-VL53L0X sensor;
+
+// https://github.com/bitcraze/Bitcraze_PMW3901
+#include "Bitcraze_PMW3901.h"
+
+// https://github.com/pololu/vl53l1x-st-api-arduino
+#include <vl53l1_api.h>
+
+VL53L1_Dev_t vl53l1x;
+
 ros::NodeHandle nh;
 
-int runSideRotors(iarc7_msgs::ESCCommand esc_commands);
+int runSideRotors(const iarc7_msgs::ESCCommand& esc_commands);
 int convolute_with_lp(float samples[]);
 
 SoftwareSerial SoftSrial(9, 7); // RX, TX
@@ -38,28 +44,34 @@ void setup()
 
     SoftSrial.begin(115200);
     Serial.begin(115200);
-  
+
     flow.begin();
-  
+
+    // Initialize VL53L1X
     Wire.begin();
-  
-    sensor.init();
-  
-    sensor.setTimeout(500);
-    sensor.startContinuous();
+    Wire.setClock(400000);
+    vl53l1x.I2cDevAddr = 0x52;
 
+    VL53L1_software_reset(&vl53l1x);
+    VL53L1_WaitDeviceBooted(&vl53l1x);
+    VL53L1_DataInit(&vl53l1x);
+    VL53L1_StaticInit(&vl53l1x);
+    VL53L1_SetDistanceMode(&vl53l1x, VL53L1_DISTANCEMODE_LONG);
+    VL53L1_SetMeasurementTimingBudgetMicroSeconds(&vl53l1x, 50000);
+    VL53L1_SetInterMeasurementPeriodMilliSeconds(&vl53l1x, 50);
+    VL53L1_StartMeasurement(&vl53l1x);
 
-  // To start up, the ESC's must be sent a min pulse for a short period of time.
-  for(int i = 0; i < 1000; i++) {
-    PORTC = PORTC | B00001111;
+    // To start up, the ESC's must be sent a min pulse for a short period of time.
+    for(int i = 0; i < 1000; i++) {
+        PORTC = PORTC | B00001111;
 
-    // The intended delay is 120 us. The -4 is to make sure that the pulse width is 
-    // no longer than 120 us.
-    delayMicroseconds(120-4);
-    PORTC = PORTC & B11110000;
-    delayMicroseconds(1500);
-  }
-    
+        // The intended delay is 120 us. The -4 is to make sure that the pulse width is 
+        // no longer than 120 us.
+        delayMicroseconds(120-4);
+        PORTC = PORTC & B11110000;
+        delayMicroseconds(1500);
+    }
+
 }
 
 int16_t deltaX,deltaY;
@@ -121,11 +133,18 @@ void loop()
       }
     }
 
-    // checkReady is a custom function added to the vl35l0x library
-    if(sensor.checkReady())
-    {
-        sensors_msgs.short_range = sensor.readRangeContinuousMillimeters()/1000.0;
-        short_range_reading_time = micros();
+    uint8_t vl53l1x_ready;
+    int vl53l1x_status = VL53L1_GetMeasurementDataReady(&vl53l1x,
+                                                        &vl53l1x_ready);
+    if (vl53l1x_status == VL53L1_ERROR_NONE && vl53l1x_ready == 1) {
+        VL53L1_RangingMeasurementData_t ranging_data;
+        vl53l1x_status = VL53L1_GetRangingMeasurementData(&vl53l1x,
+                                                          &ranging_data);
+        if (vl53l1x_status == VL53L1_ERROR_NONE) {
+            sensors_msgs.short_range = ranging_data.RangeMilliMeter / 1000.0;
+            short_range_reading_time = micros();
+            VL53L1_ClearInterruptAndStartMeasurement(&vl53l1x);
+        }
     }
 
     // Purposefully check the flow sensor at a rate lower than the 
@@ -247,7 +266,7 @@ void updateESC() {
 
 // The ESC protocol requires that we send out a pulse every 20 ms and not every time
 // we get an update from the main computer.
-int runSideRotors(iarc7_msgs::ESCCommand esc_commands)
+int runSideRotors(const iarc7_msgs::ESCCommand& esc_commands)
 {
   last_run_side_rotors = micros();
   front_PWM = esc_commands.front_motor_PWM;
