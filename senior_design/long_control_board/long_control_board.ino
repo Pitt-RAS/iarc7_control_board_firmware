@@ -104,7 +104,7 @@ void loop()
 {
     // We avoid checking the software serial buffer at a  
     // rate higher than the update rate of the long range lidar
-    if(micros() - last_long_range_reading_time > 5000) {
+    /*if(micros() - last_long_range_reading_time > 5000) {
       while(SoftSrial.available() < 9){};
       last_long_range_reading_time = micros();
 
@@ -131,7 +131,7 @@ void loop()
           }
         }
       }
-    }
+    }*/
 
     uint8_t vl53l1x_ready;
     int vl53l1x_status = VL53L1_GetMeasurementDataReady(&vl53l1x,
